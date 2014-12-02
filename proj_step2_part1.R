@@ -42,4 +42,6 @@ for (i in seq(length(states))) {
   XML_files = c(XML_files, file)
 }
 
-
+state_results = matrix(state_results, ncol=3, byrow=TRUE)
+results = data.frame(state_results)
+colnames(results) = c("County", "Dem", "GOP")
