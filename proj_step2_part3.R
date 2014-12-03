@@ -20,6 +20,13 @@ library("XML", lib.loc="~/R/win-library/3.1")
 doc = xmlParse("http://www.stat.berkeley.edu/users/nolan/data/Project2012/counties.gml")
 root = xmlRoot(doc)
 
+# Capitalize first letter of each word in string
+capitalize = function(str) {
+  s = strsplit(str, " ")[[1]]
+  paste(toupper(substring(s, 1,1)), substring(s, 2),
+        sep="", collapse=" ")
+}
+
 # Extract data from county XML node
 process_county = function(county) {
   
@@ -27,13 +34,23 @@ process_county = function(county) {
   state = xmlParent(county)
   state_name = xmlValue(state[[1]])
   
+  # Trim leading and trailing whitespace
+  state_name = gsub("^\\s+|\\s+$", "", state_name)
+  
+  # State name should be properly capitalized
+  state_name = capitalize(tolower(state_name))
+  
   # Extract county's name
   county_name = xmlValue(county[[1]])
+  
+  # Trim leading and trailing whitespace
   county_name = gsub("^\\s+|\\s+$", "", county_name)
   
   if (nchar(strsplit(county_name, " County")[[1]]) != nchar(county_name)) {
     county_name = strsplit(county_name, " County")[[1]]
   }
+  
+  county_name = paste(county_name, ", ", state_name, sep="")
   
   # Extract x and y coordinates
   location = county[[2]]
@@ -41,19 +58,17 @@ process_county = function(county) {
   x = xmlValue(coord[[1]])
   y = xmlValue(coord[[2]])
   
-  data = c(state_name, county_name, x, y)
-  
   # Trim leading and trailing whitespace
-  data = gsub("^\\s+|\\s+$", "", data)
+  x = gsub("^\\s+|\\s+$", "", x)
+  y = gsub("^\\s+|\\s+$", "", y)
   
-  # State name should be properly capitalized
-  data[1] = paste(substring(data[1], 1, 1),
-                  tolower(substring(data[1], 2, nchar(data[1]))),
-                  sep="")
+  data = c(county_name, x, y)
   
   return(data)
   
 }
+
+
 
 counties = xpathSApply(root,
                        "/doc/state/county",
@@ -61,5 +76,4 @@ counties = xpathSApply(root,
 
 counties_matrix = matrix(counties, byrow=TRUE, nrow=ncol(counties))
 counties_df = data.frame(counties_matrix)
-names(counties_df) = c("State", "County", "X", "Y")
-counties_df = counties_df[!grepl("[Cc]ity$", counties_df$County), ]
+names(counties_df) = c("County", "X", "Y")
