@@ -43,6 +43,7 @@ for (i in seq(length(states))) {
     }
     name = paste(paste(name, ", "), state, separator="", collapse=" ")
     name = gsub("\\s,\\s", ", ", gsub("\\s+", " ", name))
+    name = gsub("^\\s+|\\s+$", "", name)
     data = c(name, dems, gop)
     return(data)
   }
