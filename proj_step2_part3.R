@@ -29,6 +29,11 @@ process_county = function(county) {
   
   # Extract county's name
   county_name = xmlValue(county[[1]])
+  county_name = gsub("^\\s+|\\s+$", "", county_name)
+  
+  if (nchar(strsplit(county_name, " County")[[1]]) != nchar(county_name)) {
+    county_name = strsplit(county_name, " County")[[1]]
+  }
   
   # Extract x and y coordinates
   location = county[[2]]
@@ -57,3 +62,4 @@ counties = xpathSApply(root,
 counties_matrix = matrix(counties, byrow=TRUE, nrow=ncol(counties))
 counties_df = data.frame(counties_matrix)
 names(counties_df) = c("State", "County", "X", "Y")
+counties_df = counties_df[!grepl("[Cc]ity$", counties_df$County), ]
