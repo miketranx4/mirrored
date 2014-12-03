@@ -23,6 +23,7 @@ for (i in seq(length(states))) {
   root = xmlRoot(file)
   state = gsub("-", " ", state)
   state = capitalize(state)
+  state = gsub("\\s*$", "", gsub("^\\s*", "", state))
   #Pull county name and Dem, GOP percentages. returns c(name, dem, gop)
   process_county = function(county) {
     header = xmlValue(xpathSApply(county, "tr/th[@class=\"results-county\"]")[[1]])
@@ -40,7 +41,9 @@ for (i in seq(length(states))) {
       gop = value
       dems = value2
     }
-    data = c(state, name, dems, gop)
+    name = paste(paste(name, ", "), state, separator="", collapse=" ")
+    name = gsub("\\s,\\s", ", ", gsub("\\s+", " ", name))
+    data = c(name, dems, gop)
     return(data)
   }
   results = xpathSApply(root, "/table/tbody", process_county)
@@ -48,6 +51,6 @@ for (i in seq(length(states))) {
   XML_files = c(XML_files, file)
 }
 
-state_results = matrix(state_results, ncol=4, byrow=TRUE)
+state_results = matrix(state_results, ncol=3, byrow=TRUE)
 results = data.frame(state_results)
-colnames(results) = c("State", "County", "Dem", "GOP")
+colnames(results) = c("County", "Dem", "GOP")
