@@ -46,8 +46,4 @@ dp = merge(dp2csv, dp3csv, by = "Id2")
 withoutcounty = gsub( " County", "", bcsv[,3])
 bcsv[,3] = withoutcounty
 result = merge(bcsv, dp)
-<<<<<<< HEAD
 colnames(result)[3] = "County"
-=======
->>>>>>> 301efefc2c192eb5ac6ac65b4d5b1f31b143a86a
-
