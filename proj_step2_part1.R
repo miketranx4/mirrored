@@ -12,8 +12,8 @@ state_results = c()
 
 #Pull county name and Dem, GOP percentages. returns c(name, dem, gop)
 process_county = function(county) {
-  header = xpathSApply(county, "tr/th[@class=\"results-county\"]")[[1]]
-  name = strsplit(xmlValue(header), " ")[[1]][1]
+  header = xmlValue(xpathSApply(county, "tr/th[@class=\"results-county\"]")[[1]])
+  name = gsub("\\s[0-9]+\\.[0-9]+% Reporting", "", header)
   dems = 0
   gop = 0
   results = xpathSApply(county, "tr/td")
