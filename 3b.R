@@ -224,3 +224,4 @@ knn_df = final_df[, c("X", "Y", predicting_variables)]
 train = knn_df
 test = knn_df
 
+results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep=" ")
