@@ -238,16 +238,25 @@ test = knn_df
 results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep="")
 colnames(results_04)[1] = "County"
 
+total_votes = results_04$bushVote + results_04$kerryVote
+results_04$bushPct = round(results_04$bushVote / total_votes, digits=3)
+results_04$kerryPct = round(results_04$kerryVote / total_votes, digits=3)
+
 knn_results = knn(train, test, cl, 1, prob=TRUE)
 
 # 4b
 
 # use 2012 results to find winning party
 # calculate difference in percent between 2012 and 2004 for winning party
+# use difference for length of arrows in map
 
+# GOP and Dem vote percentages in each county for 2012 elections
+GOP_Pct_12 = as.numeric(gsub("%", "", as.character(total_pop_df[, "GOP"]))) / 100
+Dem_Pct_12 = as.numeric(gsub("%", "", as.character(total_pop_df[, "Dem"]))) / 100
 
-GOP_Pct_12 = as.numeric(gsub("%", "", as.character(total_pop_df[, "GOP"])))
-Dem_Pct_12 = as.numeric(gsub("%", "", as.character(total_pop_df[, "Dem"])))
+# GOP and Dem vote percentages in each county for 2004 elections
+GOP_Pct_04 = results_04$bushPct
+Dem_Pct_04 = results_04$kerryPct
 
 getWinningParty = function(index) {
   if (GOP_Pct_12[index] > Dem_Pct_12[index]) {
@@ -257,6 +266,7 @@ getWinningParty = function(index) {
   }
 }
 
+# Which party won in each county for 2012 elections
 winningParties = sapply(1:length(GOP_Pct_12), getWinningParty)
 
 getVoteShift = function(party) {
@@ -267,4 +277,5 @@ getVoteShift = function(party) {
   }
 }
 
+# Difference in percent between 2012 and 2004 for winning party
 vote_shifts = sapply(winning_parties, getVoteShift)
