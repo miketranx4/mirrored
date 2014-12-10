@@ -50,9 +50,9 @@ for (i in seq(length(states))) {
       gop = value
       dems = value2
     }
-    name = paste(paste(state, ","), name, separator="", collapse=" ")
-    name = gsub("\\s", "", name)
-    name = tolower(name)
+    name = paste(paste(name, ", "), state, separator="", collapse=" ")
+    name = gsub("\\s,\\s", ", ", gsub("\\s+", " ", name))
+    name = gsub("^\\s+|\\s+$", "", name)
     data = c(name, dems, gop)
     return(data)
   }
@@ -114,16 +114,8 @@ dp = merge(dp2csv, dp3csv, by = "Id2")
 withoutcounty = gsub( " County", "", bcsv[,3])
 bcsv[,3] = withoutcounty
 result = merge(bcsv, dp)
-
-format = function(x) {
-  words = strsplit(x, ", ")
-  reformat = paste(paste(words[[1]][2], ","), words[[1]][1], separator="", collapse = "`")
-  reformat = gsub(" ", "", reformat)
-  return(tolower(reformat))
-}
-
-result = data.frame(result[1:2], apply(result[3], 1, format), result[4:length(result)])
 colnames(result)[3] = "County"
+
 
 #Step 3
 # Example of what we're parsing here. Leave commented out.
@@ -177,8 +169,7 @@ process_county = function(county) {
     county_name = strsplit(county_name, " County")[[1]]
   }
   
-  county_name = paste(state_name, ",", county_name, sep="")
-  county_name = tolower(county_name)
+  county_name = paste(county_name, ", ", state_name, sep="")
   
   # Extract x and y coordinates
   location = county[[2]]
@@ -210,7 +201,6 @@ names(counties_df) = c("County", "X", "Y")
 interim = merge(results, counties_df, by="County")
 final_df = merge(interim, result, by="County")
 
-#final_df = subset(final_df, POPGROUP == "Total population")
 
 
 
@@ -230,37 +220,37 @@ predicting_variables = c("Percent; HOUSEHOLDS BY TYPE - Households with one or m
                          "Estimate; INCOME AND BENEFITS (IN 2010 INFLATION-ADJUSTED DOLLARS) - Median household income (dollars)",
                          "Percent; PERCENTAGE OF FAMILIES AND PEOPLE WHOSE INCOME IN THE PAST 12 MONTHS IS BELOW THE POVERTY LEVEL - All families")
 
-results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep="")
-colnames(results_04)[1] = "County"
-
-final_df = subset(final_df, County %in% results_04["County"][[1]])
-results_04 = subset(results_04, County %in% final_df["County"][[1]])
-
-final_df = final_df[order(final_df$County),]
-results_04 = results_04[order(results_04$County),]
-
-find_winner = function(r, d) {
-  if (r > d) {return("R")}
-  else return("D")
-} 
-cl = apply(results_04[, c('bushVote', 'kerryVote')], 1, function(x) find_winner(x[1], x[2]))
-
-#knn_df = final_df[, c("X", "Y", predicting_variables)]
 total_pop_df = final_df[final_df$POPGROUP == "Total population", ]
-knn_df = total_pop_df[ , c("X", "Y", predicting_variables)]
-
+knn_df = total_pop_df[ , c("County", "Dem", "GOP", "X", "Y", predicting_variables)]
 train = knn_df
 test = knn_df
 
 results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep="")
 colnames(results_04)[1] = "County"
 
+counties_04 = sapply(results_04$County, 
+                     function(county) capitalize(paste(strsplit(as.character(county), ",")[[1]][2], 
+                                                       strsplit(as.character(county), ",")[[1]][1],
+                                                       sep=", ")))
+results_04$County = factor(counties_04)
+
 total_votes = results_04$bushVote + results_04$kerryVote
 results_04$bushPct = round(results_04$bushVote / total_votes, digits=3)
 results_04$kerryPct = round(results_04$kerryVote / total_votes, digits=3)
 
+find_winner = function(r, d) {
+  if (r > d) {return("R")}
+  else return("D")
+} 
+results_04$cl = apply(results_04[, c('bushVote', 'kerryVote')], 1, function(x) find_winner(x[1], x[2]))
 
-knn_results = knn(train, test, cl, 1, prob=TRUE)
+combined_df = merge(knn_df, results_04)
+
+train = combined_df[, c("X", "Y", predicting_variables)]
+test = train
+cl = combined_df$cl
+
+knn_results = knn(train, test, cl, 2, prob=TRUE)
 
 # 4b
 
@@ -269,31 +259,16 @@ knn_results = knn(train, test, cl, 1, prob=TRUE)
 # use difference for length of arrows in map
 
 # GOP and Dem vote percentages in each county for 2012 elections
-GOP_Pct_12 = as.numeric(gsub("%", "", as.character(total_pop_df[, "GOP"]))) / 100
-Dem_Pct_12 = as.numeric(gsub("%", "", as.character(total_pop_df[, "Dem"]))) / 100
+GOP_Pct_12 = as.numeric(gsub("%", "", as.character(combined_df[, "GOP"]))) / 100
+Dem_Pct_12 = as.numeric(gsub("%", "", as.character(combined_df[, "Dem"]))) / 100
 
 # GOP and Dem vote percentages in each county for 2004 elections
-GOP_Pct_04 = results_04$bushPct
-Dem_Pct_04 = results_04$kerryPct
-
-getWinningParty = function(index) {
-  if (GOP_Pct_12[index] > Dem_Pct_12[index]) {
-    return("GOP")
-  } else {
-    return("Dem")
-  }
-}
+GOP_Pct_04 = combined_df$bushPct
+Dem_Pct_04 = combined_df$kerryPct
 
 # Which party won in each county for 2012 elections
-winningParties = sapply(1:length(GOP_Pct_12), getWinningParty)
-
-getVoteShift = function(party) {
-  if (party == "GOP") {
-    return(GOP_Pct_12 - GOP_Pct_04)
-  } else {
-    return(Dem_Pct_12 - Dem_Pct_04)
-  }
-}
+winning_parties_12 = sapply(1:nrow(combined_df), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D")
 
 # Difference in percent between 2012 and 2004 for winning party
-vote_shifts = sapply(winning_parties, getVoteShift)
+vote_shifts = 100 * sapply(winning_parties_12, 
+                           function(victor) if (victor == "R") GOP_Pct_12 - GOP_Pct_04 else Dem_Pct_12 - Dem_Pct_04)
