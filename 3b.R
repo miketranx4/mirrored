@@ -219,9 +219,43 @@ predicting_variables = c("Percent; HOUSEHOLDS BY TYPE - Households with one or m
                          "Estimate; INCOME AND BENEFITS (IN 2010 INFLATION-ADJUSTED DOLLARS) - Median household income (dollars)",
                          "Percent; PERCENTAGE OF FAMILIES AND PEOPLE WHOSE INCOME IN THE PAST 12 MONTHS IS BELOW THE POVERTY LEVEL - All families")
 
-knn_df = final_df[, c("X", "Y", predicting_variables)]
+#knn_df = final_df[, c("X", "Y", predicting_variables)]
+total_pop_df = final_df[final_df$POPGROUP == "Total population",]
+knn_df = total_pop_df[, c("X", "Y", predicting_variables)]
 
 train = knn_df
 test = knn_df
 
 results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep=" ")
+
+# Need to 
+knn_results = knn(train, test, cl, 1, prob=TRUE)
+
+# 4b
+
+# use 2012 results to find winning party
+# calculate difference in percent between 2012 and 2004 for winning party
+
+
+GOP_Pct_12 = as.numeric(gsub("%", "", as.character(total_pop_df[, "GOP"])))
+Dem_Pct_12 = as.numeric(gsub("%", "", as.character(total_pop_df[, "Dem"])))
+
+getWinningParty = function(index) {
+  if (GOP_Pct_12[index] > Dem_Pct_12[index]) {
+    return("GOP")
+  } else {
+    return("Dem")
+  }
+}
+
+winningParties = sapply(1:length(GOP_Pct_12), getWinningParty)
+
+getVoteShift = function(party) {
+  if (party == "GOP") {
+    return GOP_Pct_12 - GOP_Pct_04
+  } else {
+    return Dem_Pct_12 - Dem_Pct_04
+  }
+}
+
+vote_shifts = sapply(winning_parties, getVoteShift)
