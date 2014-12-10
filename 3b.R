@@ -50,9 +50,9 @@ for (i in seq(length(states))) {
       gop = value
       dems = value2
     }
-    name = paste(paste(name, ", "), state, separator="", collapse=" ")
-    name = gsub("\\s,\\s", ", ", gsub("\\s+", " ", name))
-    name = gsub("^\\s+|\\s+$", "", name)
+    name = paste(paste(state, ","), name, separator="", collapse=" ")
+    name = gsub("\\s", "", name)
+    name = tolower(name)
     data = c(name, dems, gop)
     return(data)
   }
@@ -114,8 +114,16 @@ dp = merge(dp2csv, dp3csv, by = "Id2")
 withoutcounty = gsub( " County", "", bcsv[,3])
 bcsv[,3] = withoutcounty
 result = merge(bcsv, dp)
-colnames(result)[3] = "County"
 
+format = function(x) {
+  words = strsplit(x, ", ")
+  reformat = paste(paste(words[[1]][2], ","), words[[1]][1], separator="", collapse = "`")
+  reformat = gsub(" ", "", reformat)
+  return(tolower(reformat))
+}
+
+result = data.frame(result[1:2], apply(result[3], 1, format), result[4:length(result)])
+colnames(result)[3] = "County"
 
 #Step 3
 # Example of what we're parsing here. Leave commented out.
@@ -169,7 +177,8 @@ process_county = function(county) {
     county_name = strsplit(county_name, " County")[[1]]
   }
   
-  county_name = paste(county_name, ", ", state_name, sep="")
+  county_name = paste(state_name, ",", county_name, sep="")
+  county_name = tolower(county_name)
   
   # Extract x and y coordinates
   location = county[[2]]
@@ -224,4 +233,5 @@ knn_df = final_df[, c("X", "Y", predicting_variables)]
 train = knn_df
 test = knn_df
 
-results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep=" ")
+results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep="")
+colnames(results_04)[1] = "County"
