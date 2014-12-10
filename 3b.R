@@ -210,6 +210,8 @@ names(counties_df) = c("County", "X", "Y")
 interim = merge(results, counties_df, by="County")
 final_df = merge(interim, result, by="County")
 
+#final_df = subset(final_df, POPGROUP == "Total population")
+
 
 
 
@@ -228,10 +230,23 @@ predicting_variables = c("Percent; HOUSEHOLDS BY TYPE - Households with one or m
                          "Estimate; INCOME AND BENEFITS (IN 2010 INFLATION-ADJUSTED DOLLARS) - Median household income (dollars)",
                          "Percent; PERCENTAGE OF FAMILIES AND PEOPLE WHOSE INCOME IN THE PAST 12 MONTHS IS BELOW THE POVERTY LEVEL - All families")
 
+results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep="")
+colnames(results_04)[1] = "County"
+
+final_df = subset(final_df, County %in% results_04["County"][[1]])
+results_04 = subset(results_04, County %in% final_df["County"][[1]])
+
+final_df = final_df[order(final_df$County),]
+results_04 = results_04[order(results_04$County),]
+
+find_winner = function(r, d) {
+  if (r > d) {return("R")}
+  else return("D")
+} 
+cl = apply(results_04[, c('bushVote', 'kerryVote')], 1, function(x) find_winner(x[1], x[2]))
+
 knn_df = final_df[, c("X", "Y", predicting_variables)]
 
 train = knn_df
 test = knn_df
 
-results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep="")
-colnames(results_04)[1] = "County"
