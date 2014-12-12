@@ -8,6 +8,9 @@
 #Step 1
 library("XML", lib.loc="~/R/win-library/3.1")
 require(XML)
+require(maps)
+
+
 url_format = "http://www.stat.berkeley.edu/users/nolan/data/Project2012/countyVotes2012/xxx.xml"
 
 states = scan(url("http://www.stat.berkeley.edu/users/nolan/data/Project2012/countyVotes2012/stateNames.txt"),
@@ -295,6 +298,7 @@ misclass = sapply(k_range, get_knn_misclass_rate)
 
 
 # 3a - Michael and Patrick
+pred = knn(train, test, cl, k=10, prob=TRUE)
 
 names(rpart_df)[6:20] = c("PctElder", "AvgFamSize", "PctDivorced", "PctCollege", 
                           "PctUnemployed", "PctUnder18", "PctFarm", "PctProfessional",
@@ -344,6 +348,8 @@ fit15 = rpart(cl ~ PctElder + AvgFamSize + PctDivorced + PctCollege + PctUnemplo
               + PctBelowPoverty + Nonfamily + AvgHouseSize
               + Bachelors + Alone + Female, method = "class", data = rpart_df)
 
+plot(fit15, uniform=TRUE, main="Classification Tree for President")
+text(fit15, use.n = TRUE, all = TRUE, cex = 0.5)
 
 plot(fit, uniform=TRUE, main="Classification Tree for President")
 text(fit, use.n=TRUE, all=TRUE, cex=.5)
@@ -400,8 +406,10 @@ for (i in 1:15) {
 plot(1:15, rates, xlab = "Number of Variables", ylab = "Accuracy Percentage", 
      main = "Correct Classification Rate", xlim=c(1,15))
 
+truth = factor(sapply(1:nrow(rpart_df), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D"))
 pred_false = which(pred != truth)
-rpart_findings = prediction_rate(fit, rpart_df)
+findingx = predict(fit, newdata = rpart_df)
+rpart_findings = factor(sapply(1:nrow(findingx), function(i) if (findingx[i, 1] > findingx[i, 2]) "D" else "R"))
 rpart_false = which(rpart_findings != truth)
 county_index = intersect(pred_false, rpart_false)
 
