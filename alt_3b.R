@@ -64,6 +64,7 @@ for (i in seq(length(states))) {
 state_results = matrix(state_results, ncol=3, byrow=TRUE)
 results = data.frame(state_results)
 colnames(results) = c("County", "Dem", "GOP")
+results$County = gsub("St\\.", "St", gsub("Saint", "St", results$County))
 
 #Step 2
 bmeta = read.table("http://www.stat.berkeley.edu/users/nolan/data/Project2012/census2010/B01_metadata.txt", sep = "\n")
@@ -115,7 +116,10 @@ withoutcounty = gsub( " County", "", bcsv[,3])
 bcsv[,3] = withoutcounty
 result = merge(bcsv, dp)
 colnames(result)[3] = "County"
-
+#Saint to St
+result$County = gsub("St\\.", "St", gsub("Saint", "St", result$County))
+#Remove parish
+result$County = gsub("\\sParish", "", result$County)
 
 #Step 3
 # Example of what we're parsing here. Leave commented out.
@@ -196,6 +200,11 @@ counties = xpathSApply(root,
 counties_matrix = matrix(counties, byrow=TRUE, nrow=ncol(counties))
 counties_df = data.frame(counties_matrix)
 names(counties_df) = c("County", "X", "Y")
+#Change Saints to St
+counties_df$County = gsub("St\\.", "St", gsub("Saint", "St", counties_df$County))
+#Remove Parish
+counties_df$County = gsub("\\sParish", "", counties_df$County)
+
 
 #combine
 interim = merge(results, counties_df, by="County")
