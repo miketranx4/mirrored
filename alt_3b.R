@@ -263,31 +263,23 @@ train = combined_df[, c("X", "Y", predicting_variables)]
 test = train
 cl = combined_df$cl
 
-knn_results = knn(train, test, cl, k=10, prob=TRUE)
-
 # GOP and Dem vote percentages in each county for 2012 elections
 GOP_Pct_12 = as.numeric(gsub("%", "", as.character(combined_df[, "GOP"]))) / 100
 Dem_Pct_12 = as.numeric(gsub("%", "", as.character(combined_df[, "Dem"]))) / 100
 
-pred = knn_results
-truth = factor(sapply(1:nrow(combined_df), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D"))
+get_knn_misclass_rate = function(k) {
+  knn_results = knn(train, test, cl, k, prob=TRUE)
+  
+  pred = knn_results
+  truth = factor(sapply(1:nrow(combined_df), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D"))
+  
+  assess = table(pred, truth)
+  err = (assess[1,2] + assess[2, 1]) / length(truth)
+  return(err)
+}
 
-assess = table(pred, truth)
-errs = (assess[1,2] + assess[2, 1]) / length(truth)
-
-# k         err
-#
-# 1      0.0751773
-# 2      0.1375887
-# 3      0.1170213
-# 4      0.1276596
-# 5      0.129078
-# 6      0.1315603
-# 7      0.1283688
-# 8      0.1368794
-# 9      0.1347518
-# 10     0.1368794
-
+# Misclassification rate for k = 1..20
+misclass = sapply(1:20, get_knn_misclass_rate)
 
 
 # 4b - Jason and Jeremy
