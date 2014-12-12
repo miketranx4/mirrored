@@ -313,4 +313,3 @@ lon = as.integer(as.character(combined_df$Y)) / 1000000
 map('county', xlim=c(min(lat) - 1, max(lat)) + 1, ylim=c(min(lon) - 1, max(lon) + 1))
 cols = c("blue", "gray", "red")
 arrows(lat, lon, lat + vote_shifts, lon + vote_shifts, length=0.03, col=cols[party_increase])
-# Louisana and Virginia counties missing. Investigate.
