@@ -306,10 +306,10 @@ vote_shifts = 10 * sapply(1:nrow(combined_df),
                           function(i) if (GOP_diff[i] < 0 & Dem_diff[i] < 0) 0 else if (GOP_diff[i] >= Dem_diff[i]) GOP_diff[i] else Dem_diff[i])
 
 # Adjust latitude/longitude per professor's announcement
-combined_df$X = as.integer(as.character(combined_df$X)) / 1000000
-combined_df$Y = as.integer(as.character(combined_df$Y)) / 1000000
+lat = as.integer(as.character(combined_df$X)) / 1000000
+lon = as.integer(as.character(combined_df$Y)) / 1000000
 
-map('county', xlim=c(min(combined_df$X), max(combined_df$X)), ylim=c(min(combined_df$Y), max(combined_df$Y)))
+map('county', xlim=c(min(lat) - 1, max(lat)) + 1, ylim=c(min(lon) - 1, max(lon) + 1))
 cols = c("blue", "gray", "red")
-arrows(combined_df$X, combined_df$Y, combined_df$X + vote_shifts, combined_df$Y + vote_shifts, length=0.03, col=cols[party_increase])
+arrows(lat, lon, lat + vote_shifts, lon + vote_shifts, length=0.03, col=cols[party_increase])
 # Louisana and Virginia counties missing. Investigate.
