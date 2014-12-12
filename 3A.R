@@ -236,16 +236,25 @@ find_winner = function(r, d) {
 } 
 results_04$cl = apply(results_04[, c('bushVote', 'kerryVote')], 1, function(x) find_winner(x[1], x[2]))
 
-combined_df = merge(knn_df, results_04)
+rpart_df = merge(knn_df, results_04)
 
-names(combined_df)[6:15] = c("PctElder", "AvgFamSize", "PctDivorced", "PctCollege", "PctUnemployed", "PctUnder18", "PctFarm", "PctProfessional", "MedianIncome", "PctBelowPoverty")
-
-fit = rpart(cl ~ PctElder + AvgFamSize + PctDivorced + PctCollege + PctUnemployed + PctUnder18 + PctFarm + PctProfessional + MedianIncome + PctBelowPoverty, method = "class", data = combined_df)
+names(rpart_df)[6:15] = c("PctElder", "AvgFamSize", "PctDivorced", "PctCollege", "PctUnemployed", "PctUnder18", "PctFarm", "PctProfessional", "MedianIncome", "PctBelowPoverty")
+library(rpart)
+fit = rpart(cl ~ PctElder + AvgFamSize + PctDivorced + PctCollege + PctUnemployed + PctUnder18 + PctFarm + PctProfessional + MedianIncome + PctBelowPoverty, method = "class", data = rpart_df)
 
 plot(fit, uniform=TRUE, main="Classification Tree for President")
 text(fit, use.n=TRUE, all=TRUE, cex=.5)
 
-
-train = combined_df[, c("X", "Y", predicting_variables)]
-test = train
-cl = combined_df$cl
+findings = predict(fit, newdata = rpart_df)
+correct = 0
+for (i in 1:nrow(findings)) {
+    if (findings[i,1] > findings[i, 2]) {
+        if ("D" == knn_results[i]) {
+            correct = correct + 1
+        }
+    } else {
+        if ("R" == knn_results[i]) {
+            correct = correct + 1
+        }
+    }
+}
