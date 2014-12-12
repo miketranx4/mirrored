@@ -278,11 +278,13 @@ get_knn_misclass_rate = function(k) {
   return(err)
 }
 
+# 4a
+
 # Misclassification rate for k = 1..20
 k_range = 1:20
 misclass = sapply(k_range, get_knn_misclass_rate)
 
-# Plot misclassification rate for different k
+# Plot misclassification rate for k = 1..20
 plot(misclass ~ k_range,
      xlab="k", ylab="Misclassification Rate",
      main="Misclassification Rate for Different k Values",
