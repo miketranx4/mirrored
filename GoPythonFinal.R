@@ -419,4 +419,3 @@ plot(misclass ~ k_range,
      main="Knn Misclassification Rates",
      pch=19)
 
-
