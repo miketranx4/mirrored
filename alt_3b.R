@@ -1,6 +1,6 @@
 #Jason Zhang
 #Jeremy Young
-#Mike Tran
+#Michael Tran
 #Patrick Lin
 
 #DATA FRAME IS IN VARIABLE "final_df", assigned on line 202
@@ -293,7 +293,7 @@ plot(misclass ~ k_range,
 
 # 4b - Jason and Jeremy
 
-# use 2012 and 2004 election results to find party that saw the greatest increase in voting percentage
+# for each county, find party that saw an increase in voting percentage in 2012
 # calculate increase in percentage for this party from 2012 to 2004 
 # use increase amount for arrow length in map, use party for arrow color
 
