@@ -266,12 +266,12 @@ cl = combined_df$cl
 # GOP and Dem vote percentages in each county for 2012 elections
 GOP_Pct_12 = as.numeric(gsub("%", "", as.character(combined_df[, "GOP"]))) / 100
 Dem_Pct_12 = as.numeric(gsub("%", "", as.character(combined_df[, "Dem"]))) / 100
+truth = factor(sapply(1:nrow(combined_df), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D"))
 
 get_knn_misclass_rate = function(k) {
   knn_results = knn(train, test, cl, k, prob=TRUE)
   
   pred = knn_results
-  truth = factor(sapply(1:nrow(combined_df), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D"))
   
   assess = table(pred, truth)
   err = (assess[1,2] + assess[2, 1]) / length(truth)
@@ -279,7 +279,14 @@ get_knn_misclass_rate = function(k) {
 }
 
 # Misclassification rate for k = 1..20
-misclass = sapply(1:20, get_knn_misclass_rate)
+k_range = 1:20
+misclass = sapply(k_range, get_knn_misclass_rate)
+
+# Plot misclassification rate for different k
+plot(misclass ~ k_range,
+     xlab="k", ylab="Misclassification Rate",
+     main="Misclassification Rate for Different k Values",
+     pch=19)
 
 
 # 4b - Jason and Jeremy
@@ -310,6 +317,6 @@ vote_shifts = 10 * sapply(1:nrow(combined_df),
 lat = as.integer(as.character(combined_df$X)) / 1000000
 lon = as.integer(as.character(combined_df$Y)) / 1000000
 
-map('county', xlim=c(min(lat) - 1, max(lat)) + 1, ylim=c(min(lon) - 1, max(lon) + 1))
+map('county', xlim=c(min(lat) - 1, max(lat)) + 1, ylim=c(min(lon) - 1, max(lon) + 1), main="Map of vote shifts")
 cols = c("blue", "gray", "red")
 arrows(lat, lon, lat + vote_shifts, lon + vote_shifts, length=0.03, col=cols[party_increase])
