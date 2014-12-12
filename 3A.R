@@ -56,6 +56,7 @@ for (i in seq(length(states))) {
 state_results = matrix(state_results, ncol=3, byrow=TRUE)
 results = data.frame(state_results)
 colnames(results) = c("County", "Dem", "GOP")
+results$County = gsub("St\\.", "St", gsub("Saint", "St", results$County))
 
 #Step 2
 bmeta = read.table("http://www.stat.berkeley.edu/users/nolan/data/Project2012/census2010/B01_metadata.txt", sep = "\n")
@@ -107,7 +108,10 @@ withoutcounty = gsub( " County", "", bcsv[,3])
 bcsv[,3] = withoutcounty
 result = merge(bcsv, dp)
 colnames(result)[3] = "County"
-
+#Saint to St
+result$County = gsub("St\\.", "St", gsub("Saint", "St", result$County))
+#Remove parish
+result$County = gsub("\\sParish", "", result$County)
 
 #Step 3
 # Example of what we're parsing here. Leave commented out.
@@ -188,6 +192,11 @@ counties = xpathSApply(root,
 counties_matrix = matrix(counties, byrow=TRUE, nrow=ncol(counties))
 counties_df = data.frame(counties_matrix)
 names(counties_df) = c("County", "X", "Y")
+#Change Saints to St
+counties_df$County = gsub("St\\.", "St", gsub("Saint", "St", counties_df$County))
+#Remove Parish
+counties_df$County = gsub("\\sParish", "", counties_df$County)
+
 
 #combine
 interim = merge(results, counties_df, by="County")
@@ -195,11 +204,9 @@ final_df = merge(interim, result, by="County")
 
 
 
+# 3b - Jason and Jeremy
 
-
-# 3b
-
-library("class", lib.loc="C:/Program Files/R/R-3.1.1/library")
+require("class")
 
 predicting_variables = c("Percent; HOUSEHOLDS BY TYPE - Households with one or more people 65 years and over",
                          "Estimate; HOUSEHOLDS BY TYPE - Average family size",  
@@ -210,22 +217,30 @@ predicting_variables = c("Percent; HOUSEHOLDS BY TYPE - Households with one or m
                          "Percent; INDUSTRY - Agriculture",  
                          "Percent; INDUSTRY - Professional",   
                          "Estimate; INCOME AND BENEFITS (IN 2010 INFLATION-ADJUSTED DOLLARS) - Median household income (dollars)",
-                         "Percent; PERCENTAGE OF FAMILIES AND PEOPLE WHOSE INCOME IN THE PAST 12 MONTHS IS BELOW THE POVERTY LEVEL - All families")
+                         "Percent; PERCENTAGE OF FAMILIES AND PEOPLE WHOSE INCOME IN THE PAST 12 MONTHS IS BELOW THE POVERTY LEVEL - All families",
+                         "Estimate; HOUSEHOLDS BY TYPE - Nonfamily households",
+                         "Estimate; HOUSEHOLDS BY TYPE - Average household size",
+                         "Estimate; MARITAL STATUS - Never married",
+                         "Estimate; HOUSEHOLDS BY TYPE - Nonfamily households - Householder living alone",
+                         "Estimate; HOUSEHOLDS BY TYPE - Family households (families) - Female householder")
 
-total_pop_df = final_df[final_df$POPGROUP == "Total population", ]
-knn_df = total_pop_df[ , c("County", "Dem", "GOP", "X", "Y", predicting_variables)]
-train = knn_df
-test = knn_df
+# total_pop_df contains stats for the overall population of each county, rather than each individual ethnicity
+total_pop_df = final_df[final_df$POPGROUP == "Total population",]
+# subset to only include the variables we're concerned with for this project
+knn_df = total_pop_df[, c("County", "Dem", "GOP", "X", "Y", predicting_variables)]
 
+# 2004 election results, containing county name, number of Bush votes, and number of Kerry votes
 results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep="")
 colnames(results_04)[1] = "County"
 
+# Reformat county name to match rest of data from Step 2 (i.e. [COUNTY_NAME], [STATE])
 counties_04 = sapply(results_04$County, 
                      function(county) capitalize(paste(strsplit(as.character(county), ",")[[1]][2], 
                                                        strsplit(as.character(county), ",")[[1]][1],
                                                        sep=", ")))
 results_04$County = factor(counties_04)
 
+# Calculate percentage who voted for Bush and Kerry in each county
 total_votes = results_04$bushVote + results_04$kerryVote
 results_04$bushPct = round(results_04$bushVote / total_votes, digits=3)
 results_04$kerryPct = round(results_04$kerryVote / total_votes, digits=3)
@@ -234,27 +249,84 @@ find_winner = function(r, d) {
   if (r > d) {return("R")}
   else return("D")
 } 
+
+# Determine victor for each county
 results_04$cl = apply(results_04[, c('bushVote', 'kerryVote')], 1, function(x) find_winner(x[1], x[2]))
+
 
 rpart_df = merge(knn_df, results_04)
 
-names(rpart_df)[6:15] = c("PctElder", "AvgFamSize", "PctDivorced", "PctCollege", "PctUnemployed", "PctUnder18", "PctFarm", "PctProfessional", "MedianIncome", "PctBelowPoverty")
+names(rpart_df)[6:20] = c("PctElder", "AvgFamSize", "PctDivorced", "PctCollege", 
+                          "PctUnemployed", "PctUnder18", "PctFarm", "PctProfessional",
+                          "MedianIncome", "PctBelowPoverty", "Nonfamily", "AvgHouseSize", 
+                          "Bachelors", "Alone", "Female")
 library(rpart)
-fit = rpart(cl ~ PctElder + AvgFamSize + PctDivorced + PctCollege + PctUnemployed + PctUnder18 + PctFarm + PctProfessional + MedianIncome + PctBelowPoverty, method = "class", data = rpart_df)
+fit = rpart(cl ~ PctElder + AvgFamSize + PctDivorced + PctCollege + PctUnemployed 
+            + PctUnder18 + PctFarm + PctProfessional + MedianIncome 
+            + PctBelowPoverty, method = "class", data = rpart_df)
+
+
+
+fit1 = rpart(cl ~ Bachelors, method = "class", data = rpart_df)
+fit2 = rpart(cl ~  PctBelowPoverty + Bachelors, method = "class", data = rpart_df)
+fit3 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily, method = "class", data = rpart_df)
+fit4 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone, method = "class", data = rpart_df)
+fit5 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female, 
+             method = "class", data = rpart_df)
+fit6 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome, 
+             method = "class", data = rpart_df)
+fit7 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome +
+             PctUnemployed, method = "class", data = rpart_df)
+fit8 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome +
+               PctUnemployed + PctProfessional, method = "class", data = rpart_df)
+fit9 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome +
+               PctUnemployed + PctProfessional + PctElder, method = "class", data = rpart_df)
+fit10 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome +
+               PctUnemployed + PctProfessional + PctElder + PctFarm, 
+             method = "class", data = rpart_df)
+fit11 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome +
+                PctUnemployed + PctProfessional + PctElder + PctFarm + PctCollege, 
+              method = "class", data = rpart_df)
+fit12 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome +
+                PctUnemployed + PctProfessional + PctElder + PctFarm + PctCollege
+              + AvgFamSize, 
+              method = "class", data = rpart_df)
+fit13 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome +
+                PctUnemployed + PctProfessional + PctElder + PctFarm + PctCollege
+              + AvgFamSize + AvgHouseSize, 
+              method = "class", data = rpart_df)
+fit14 = rpart(cl ~  PctBelowPoverty + Bachelors + Nonfamily + Alone + Female + MedianIncome +
+                PctUnemployed + PctProfessional + PctElder + PctFarm + PctCollege
+              + AvgFamSize + AvgHouseSize + PctDivorced, 
+              method = "class", data = rpart_df)
+fit15 = rpart(cl ~ PctElder + AvgFamSize + PctDivorced + PctCollege + PctUnemployed 
+              + PctUnder18 + PctFarm + PctProfessional + MedianIncome 
+              + PctBelowPoverty + Nonfamily + AvgHouseSize
+              + Bachelors + Alone + Female, method = "class", data = rpart_df)
+
 
 plot(fit, uniform=TRUE, main="Classification Tree for President")
 text(fit, use.n=TRUE, all=TRUE, cex=.5)
 
-findings = predict(fit, newdata = rpart_df)
-correct = 0
-for (i in 1:nrow(findings)) {
-    if (findings[i,1] > findings[i, 2]) {
-        if ("D" == knn_results[i]) {
-            correct = correct + 1
-        }
-    } else {
-        if ("R" == knn_results[i]) {
-            correct = correct + 1
-        }
-    }
+prediction_rate = function(model, data_frame) {
+  finding = predict(model, newdata = data_frame)
+  truth = factor(sapply(1:nrow(data_frame), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D"))
+  rpart_findings = factor(sapply(1:nrow(finding), function(i) if (finding[i, 1] > finding[i, 2]) "D" else "R"))
+  percentage = sum(truth == rpart_findings) / length(truth)
+  return (percentage)
+  
 }
+
+rates = c()
+for (i in 1:15) {
+  rates = c(rates, prediction_rate(get(paste("fit", toString(i), sep = "")), rpart_df))
+}
+plot(1:15, rates, xlab = "Number of Variables", ylab = "Accuracy Percentage", 
+     main = "Correct Classification Rate", xlim=c(1,15))
+
+pred_false = which(pred != truth)
+rpart_false = which(rpart_findings != truth)
+intersect(pred_false, rpart_false)
+
+
+
