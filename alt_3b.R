@@ -203,11 +203,9 @@ final_df = merge(interim, result, by="County")
 
 
 
+# 3b - Jason and Jeremy
 
-
-# 3b
-
-library("class", lib.loc="C:/Program Files/R/R-3.1.1/library")
+require("class")
 
 predicting_variables = c("Percent; HOUSEHOLDS BY TYPE - Households with one or more people 65 years and over",
                          "Estimate; HOUSEHOLDS BY TYPE - Average family size",  
@@ -220,20 +218,23 @@ predicting_variables = c("Percent; HOUSEHOLDS BY TYPE - Households with one or m
                          "Estimate; INCOME AND BENEFITS (IN 2010 INFLATION-ADJUSTED DOLLARS) - Median household income (dollars)",
                          "Percent; PERCENTAGE OF FAMILIES AND PEOPLE WHOSE INCOME IN THE PAST 12 MONTHS IS BELOW THE POVERTY LEVEL - All families")
 
-total_pop_df = final_df[final_df$POPGROUP == "Total population", ]
-knn_df = total_pop_df[ , c("County", "Dem", "GOP", "X", "Y", predicting_variables)]
-train = knn_df
-test = knn_df
+# total_pop_df contains stats for the overall population of each county, rather than each individual ethnicity
+total_pop_df = final_df[final_df$POPGROUP == "Total population",]
+# subset to only include the variables we're concerned with for this project
+knn_df = total_pop_df[, c("County", "Dem", "GOP", "X", "Y", predicting_variables)]
 
+# 2004 election results, containing county name, number of Bush votes, and number of Kerry votes
 results_04 = read.csv("http://www.stat.berkeley.edu/~nolan/data/Project2012/countyVotes2004.txt", sep="")
 colnames(results_04)[1] = "County"
 
+# Reformat county name to match rest of data from Step 2 (i.e. [COUNTY_NAME], [STATE])
 counties_04 = sapply(results_04$County, 
                      function(county) capitalize(paste(strsplit(as.character(county), ",")[[1]][2], 
                                                        strsplit(as.character(county), ",")[[1]][1],
                                                        sep=", ")))
 results_04$County = factor(counties_04)
 
+# Calculate percentage who voted for Bush and Kerry in each county
 total_votes = results_04$bushVote + results_04$kerryVote
 results_04$bushPct = round(results_04$bushVote / total_votes, digits=3)
 results_04$kerryPct = round(results_04$kerryVote / total_votes, digits=3)
@@ -242,33 +243,73 @@ find_winner = function(r, d) {
   if (r > d) {return("R")}
   else return("D")
 } 
+
+# Determine victor for each county
 results_04$cl = apply(results_04[, c('bushVote', 'kerryVote')], 1, function(x) find_winner(x[1], x[2]))
 
+# Match 2004 election results with data from Step 2
 combined_df = merge(knn_df, results_04)
 
 train = combined_df[, c("X", "Y", predicting_variables)]
 test = train
 cl = combined_df$cl
 
-knn_results = knn(train, test, cl, 2, prob=TRUE)
-
-# 4b
-
-# use 2012 results to find winning party
-# calculate difference in percent between 2012 and 2004 for winning party
-# use difference for length of arrows in map
+knn_results = knn(train, test, cl, k=10, prob=TRUE)
 
 # GOP and Dem vote percentages in each county for 2012 elections
 GOP_Pct_12 = as.numeric(gsub("%", "", as.character(combined_df[, "GOP"]))) / 100
 Dem_Pct_12 = as.numeric(gsub("%", "", as.character(combined_df[, "Dem"]))) / 100
 
+pred = knn_results
+truth = factor(sapply(1:nrow(combined_df), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D"))
+
+assess = table(pred, truth)
+errs = (assess[1,2] + assess[2, 1]) / length(truth)
+
+# k         err
+#
+# 1      0.0751773
+# 2      0.1375887
+# 3      0.1170213
+# 4      0.1276596
+# 5      0.129078
+# 6      0.1315603
+# 7      0.1283688
+# 8      0.1368794
+# 9      0.1347518
+# 10     0.1368794
+
+
+
+# 4b - Jason and Jeremy
+
+# use 2012 and 2004 election results to find party that saw the greatest increase in voting percentage
+# calculate increase in percentage for this party from 2012 to 2004 
+# use increase amount for arrow length in map, use party for arrow color
+
+# To install maps package, run: install.packages("ggplot2")
+require("maps")
+
 # GOP and Dem vote percentages in each county for 2004 elections
 GOP_Pct_04 = combined_df$bushPct
 Dem_Pct_04 = combined_df$kerryPct
 
-# Which party won in each county for 2012 elections
-winning_parties_12 = sapply(1:nrow(combined_df), function(i) if (GOP_Pct_12[i] > Dem_Pct_12[i]) "R" else "D")
+GOP_diff = GOP_Pct_12 - GOP_Pct_04
+Dem_diff = Dem_Pct_12 - Dem_Pct_04
 
-# Difference in percent between 2012 and 2004 for winning party
-vote_shifts = 100 * sapply(winning_parties_12, 
-                           function(victor) if (victor == "R") GOP_Pct_12 - GOP_Pct_04 else Dem_Pct_12 - Dem_Pct_04)
+# Party that saw greatest increase in voting percentage from 2004 to 2012. If neither party increased, party denoted as "N"
+party_increase = factor(sapply(1:nrow(combined_df), 
+                               function(i) if (GOP_diff[i] < 0 & Dem_diff[i] < 0) "N" else if (GOP_diff[i] >= Dem_diff[i]) "R" else "D"))
+
+# Amount of increase for parties determined above.
+vote_shifts = 10 * sapply(1:nrow(combined_df), 
+                          function(i) if (GOP_diff[i] < 0 & Dem_diff[i] < 0) 0 else if (GOP_diff[i] >= Dem_diff[i]) GOP_diff[i] else Dem_diff[i])
+
+# Adjust latitude/longitude per professor's announcement
+combined_df$X = as.integer(as.character(combined_df$X)) / 1000000
+combined_df$Y = as.integer(as.character(combined_df$Y)) / 1000000
+
+map('county', xlim=c(min(combined_df$X), max(combined_df$X)), ylim=c(min(combined_df$Y), max(combined_df$Y)))
+cols = c("blue", "gray", "red")
+arrows(combined_df$X, combined_df$Y, combined_df$X + vote_shifts, combined_df$Y + vote_shifts, length=0.03, col=cols[party_increase])
+# Louisana and Virginia counties missing. Investigate.
