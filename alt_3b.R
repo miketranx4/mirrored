@@ -287,7 +287,7 @@ misclass = sapply(k_range, get_knn_misclass_rate)
 # Plot misclassification rate for k = 1..20
 plot(misclass ~ k_range,
      xlab="k", ylab="Misclassification Rate",
-     main="Misclassification Rate for Different k Values",
+     main="Knn Misclassification Rates",
      pch=19)
 
 
