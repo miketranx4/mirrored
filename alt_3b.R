@@ -287,7 +287,7 @@ errs = (assess[1,2] + assess[2, 1]) / length(truth)
 # calculate increase in percentage for this party from 2012 to 2004 
 # use increase amount for arrow length in map, use party for arrow color
 
-# To install maps package, run: install.packages("ggplot2")
+# To install maps package, run: install.packages("maps")
 require("maps")
 
 # GOP and Dem vote percentages in each county for 2004 elections
